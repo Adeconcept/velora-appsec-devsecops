@@ -1,6 +1,6 @@
 # Assessment evidence
 
-The automated transcript records the 27 November 2026 verbose pytest run on Darwin arm64 / Python 3.12.14 at b01e77e5e0af69fb2fe58a38cd14dc22ac7e8d5a. The absolute checkout path is redacted. Each node ID identifies its exact test inputs and assertions in the baseline source.
+The quiet baseline invocation (python -m pytest -q) reported **38 passed in 2.69s**. A separate verbose invocation (python -m pytest -v --color=no) reported **38 passed in 2.77s**. Both exercised the same baseline suite. The [automated transcript](automated/baseline.txt) records the 27 November 2026 verbose pytest run on Darwin arm64 / Python 3.12.14 at b01e77e5e0af69fb2fe58a38cd14dc22ac7e8d5a. The absolute checkout path is redacted. Each node ID identifies its exact test inputs and assertions in the baseline source.
 
 For manual observations use one record per comparison, named AS-xxx-E01, E02 and so on. Record date/time and zone, tested SHA, OS, Python, Burp/browser versions, synthetic actor, initial object state, method, route, expected result, observed status, relevant response text, persisted state and interpretation. Link the sanitized request/response excerpts or cropped screenshot. Use labels for changing session values. Distinguish browser navigation, source review, and pytest evidence.
 

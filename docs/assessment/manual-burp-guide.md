@@ -29,40 +29,31 @@ Choose distinct synthetic passwords at the hidden prompts for avery@example.test
 
 Set Burp's local proxy listener to 127.0.0.1:8080. Use Burp's browser or a dedicated Firefox profile using that HTTP proxy; if Firefox bypasses localhost, use Burp's browser. Limit scope to http://127.0.0.1:5050. Open the catalog and confirm an entry for GET / in HTTP history before recording anything. No TLS certificate installation is needed for this HTTP instance.
 
-## Capture sequence
+## Six manual comparisons
 
-Use regular application traffic for the browser observations. The existing regression suite supplies the negative-control comparisons below. Record automated corroboration separately. Leave any manual variant you did not observe as NOT TESTED.
+Record the tested SHA, OS, Python, Burp and browser versions, time zone, and synthetic account once per run. Use an isolated session for each account. Record the **first HTTP status before following a redirect** and use a fresh GET for the state check. The expectations below come from the reviewed implementation. All six manual cases start as **NOT TESTED**.
 
-1. **Authorization (AS-001–004).** In a signed-out context open /profile. Sign in as Avery, open My orders and the notebook detail. Repeat in Morgan's own context for the tray order. Capture each legitimate reference, displayed amount, role and status. Open the fulfillment queue as Ops and note the available fields. Save Avery’s name once, return to the profile and verify the other identity retains its own name. Use the ownership, field-permission and role tests below as supporting evidence for the denied variants.
-2. **Authentication and sessions (AS-005,009,012).** Track whether the cookie changes after sign-in using labels A and B. Record the flags and no-store header, without copying the values. Sign out and navigate afresh to /profile. In a fresh signed-in session leave all account pages inactive for at least 15 minutes, then request My orders. Record elapsed time and the fresh HTTP status. For a low-cost abuse check, make one incorrect synthetic login followed by one legitimate login; record the generic failure and subsequent result. Use the deterministic budget tests for threshold and recovery evidence. If you do not wait eight hours, record absolute expiry as automated-only.
-3. **Input and error handling (AS-007,008,011).** Search separately for notebook, %, and a missing product name. Record the matching rows. Use an inert marker such as `Paper & "Ink"` in search and your own display name. Compare the raw HTML attribute with the visible value on the page. Restore the original display name. Observe the response for an absent product and check for diagnostic details. Note that literal behavior and escaping support specific input contexts only.
-4. **Request integrity and fulfillment (AS-006,010).** Capture one legitimate edit and note where the hidden form token is carried; redact it. Confirm VC-1001 is processing in both Ops and Avery’s views. Use Ops to mark it shipped once, then refresh Avery’s detail. Capture the POST response before the redirect, the resulting state and the absence of a second action in the queue. Use the existing CSRF, repeated-transition and concurrency tests for the denied cases. A missing button is UI evidence only.
-
-For the paired allow/deny comparisons on this exact baseline, run in a second terminal from the same checkout:
-
-```sh
-. .venv/bin/activate
-python -m pytest -v tests/test_accounts.py -k 'customer_boundary or admin_scope or csrf_for_all or rotation_and_revocation or expiration or attempt_budget or allocation_budget or concurrent_ship'
-python -m pytest -v tests/test_catalog.py -k 'search or html_contexts'
-```
+1. **AS-002 · Order ownership.** In Avery's session, capture GET of the order detail linked from My orders (VC-1001, two notebooks, €17.00). In Morgan's session, record the legitimate detail URL for VC-1002 (studio tray, €24.00). Both owner reads should return 200. For the comparison, keep Avery's session and change only the order selector in Avery's GET to Morgan's observed selector. Expect 404 with no Morgan reference, items or total. Refresh each owner's list and detail in its own session and verify the original ownership and amounts. Save the legitimate pair under AS-002-E01 and the denied response plus state check under AS-002-E02.
+2. **AS-003 · Fulfillment permission.** As Ops, GET /admin/orders and record VC-1001's processing status and the action URL on its shipment form. Keep this order processing for the test. As Avery, GET the same queue and submit a POST to that shipment URL with Avery's own valid session and form token. Expect 403 for both customer requests. A 400 alone does not establish role enforcement. Refresh Ops's queue and Avery's order detail; both should still show processing. Use AS-003-E01 for the authorized queue and AS-003-E02 for both denials and the fresh reads.
+3. **AS-004 · Protected form fields.** As Avery, save an ordinary display name with POST /profile. Expect 303 and verify the new value with GET /profile. Repeat the permitted edit with a distinct name and additional role and ownership claims (role=admin and owner_id set to Morgan's fixture ID). Keep Avery's session and valid CSRF token. Expect 303 because the permitted name change succeeds. Confirm the new name persists for Avery, Morgan's profile is unchanged, Avery still receives 403 for the admin queue, and each original order remains visible to its owner. Restore Avery's original name. Save AS-004-E01 for the ordinary edit and AS-004-E02 for the second edit and postconditions.
+4. **AS-005 · Logout revocation.** As Avery, retain a successful GET /profile in the temporary proxy project. Sign out normally with POST /logout and record the expected 303 and cookie expiration. Repeat the retained profile read with its original session context, before signing back in. Expect 401 and no profile data. A fresh browser profile read should also require authentication. Record the retained-request response separately from the new browser request: only the former checks server-side revocation of the old session. Use AS-005-E01 for the authorized read and logout and AS-005-E02 for the post-logout reads. Redact every cookie value.
+5. **AS-006 · Form integrity.** Sign back in as Avery. With a valid token, save a known baseline name on POST /profile and confirm it persists. Prepare another edit with a different candidate name. In two separate requests keep the session, name and route constant: omit the csrf field, then supply the literal invalid value “invalid”. Expect 400 each time. After **each** response, GET /profile and verify the baseline name persists. Restore the original name. Save AS-006-E01 for the valid control, AS-006-E02 for missing, AS-006-E03 for invalid.
+6. **AS-008 · HTML output context.** As Avery, search normally with GET /?q=notebook and record an ordinary display-name save. Then use the inert text `<em>Velora</em> & "Ink"` as the search term and as Avery's display name using the supported forms. Expect 200 for search, 303 for save and 200 on profile reload. Compare the raw HTML with the browser field value: delimiters should be escaped in the quoted attribute and the complete original text should be visible as the value. Inspect the DOM for any marker-created element. Repeat the profile GET to confirm persistence, then restore the original name. Save AS-008-E01 for the ordinary inputs and AS-008-E02 for encoded source, field value and reload. This checks the sampled HTML contexts only.
 
 ## Analyst return sheet
 
-Use E01 for the first sanitized manual observation in a case, E02 for its comparison. Add rows for partial or conflicting observations.
+E01 records the baseline in each case. Use the comparison IDs below for the associated contrasts. Enter filenames only after sanitizing the artifacts. Leave unobserved variants NOT TESTED and split mixed outcomes across rows.
 
-|Case|Role / method / route|Expected behavior|Observed status and relevant data or state|Evidence ID or file|Interpretation|
-|---|---|---|---|---|---|
-|AS-001|Guest / profile|401||||
-|AS-002|Avery and Morgan / order reads|Own order visible||||
-|AS-003|Ops / queue|Queue visible within role policy||||
-|AS-004|Customer / profile edit|Only own name changes||||
-|AS-005|Customer / session lifecycle|Rotation and loss of access on termination||||
-|AS-006|Permitted actor / forms|Session-bound tokens required||||
-|AS-007|Guest / search|Literal matching||||
-|AS-008|Customer / search and profile|Punctuation remains text||||
-|AS-009|Guest / login|Generic failure and recovery within budget||||
-|AS-010|Ops / ship|One persisted transition||||
-|AS-011|Guest / product lookup|404 without internals||||
-|AS-012|Guest and customer / headers|Documented cookie and cache settings||||
+|Comparison ID|Expected outcome|Actual HTTP status|Relevant response excerpt|Persisted state / fresh read|Evidence filename(s)|Interpretation / disposition|
+|---|---|---|---|---|---|---|
+|AS-002-E02|Avery receives 404 for Morgan's order; own details intact||||||
+|AS-003-E02|Customer queue and shipment return 403; processing persists||||||
+|AS-004-E02|303; only Avery's display name changes||||||
+|AS-005-E02|Old session and fresh signed-out read return 401||||||
+|AS-006-E02|Missing token returns 400; baseline name persists||||||
+|AS-006-E03|Invalid token returns 400; baseline name persists||||||
+|AS-008-E02|Literal value survives rendering and profile reload||||||
+
+**Evidence boundaries.** A passing automated test can corroborate a manual observation. It cannot populate an empty manual result. The order schema's lack of operator and transition time is a source-review limitation tracked in the [review draft](secure-code-review.md). It has no manual finding or severity assigned. Keep the remaining assessment cases and unobserved variants pending in the [full test plan](test-plan.md).
 
 Stop Flask with Ctrl-C and close the temporary Burp project. For a clean reset, retain sanitized evidence outside the checkout and repeat setup in a **new** temporary directory. Reseeding an existing database preserves shipped orders. Return the completed rows and sanitized excerpts. Include any skipped case and why.
