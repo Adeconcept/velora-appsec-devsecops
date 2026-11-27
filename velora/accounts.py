@@ -1,7 +1,14 @@
 from flask import abort, g, redirect, render_template, request, url_for
 
+from werkzeug.routing import IntegerConverter
+
 from .access import bp
 from .db import connection
+
+
+class OrderIDConverter(IntegerConverter):
+    # Bound the decimal representation before Python converts it to an integer.
+    regex = r"[0-9]{1,19}"
 
 
 @bp.route("/profile", methods=["GET", "POST"])
@@ -23,7 +30,7 @@ def orders():
     return render_template("orders.html", rows=rows)
 
 
-@bp.get("/orders/<int:order_id>")
+@bp.get("/orders/<order_id:order_id>")
 def order(order_id):
     if order_id > 2**63 - 1:
         abort(404)
@@ -43,7 +50,7 @@ def fulfillment():
     return render_template("orders.html", rows=rows, admin=True)
 
 
-@bp.post("/admin/orders/<int:order_id>/ship")
+@bp.post("/admin/orders/<order_id:order_id>/ship")
 def ship(order_id):
     if order_id > 2**63 - 1:
         abort(404)

@@ -5,6 +5,7 @@ from flask import Flask
 
 from . import accounts, catalog, db
 from .seed import seed_accounts
+from .throttle import MinuteBudget
 
 
 def create_app(config=None):
@@ -14,6 +15,9 @@ def create_app(config=None):
                       MAX_CONTENT_LENGTH=32 * 1024)
     if config:
         app.config.update(config)
+    app.extensions["login_attempts"] = MinuteBudget(10)
+    app.extensions["anonymous_sessions"] = MinuteBudget(20)
+    app.url_map.converters["order_id"] = accounts.OrderIDConverter
     db.init_app(app)
     app.cli.add_command(seed_accounts)
     app.register_blueprint(catalog.bp)

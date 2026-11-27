@@ -3,6 +3,8 @@ import re
 import secrets
 import shutil
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import pytest
 from werkzeug.security import check_password_hash
@@ -106,8 +108,10 @@ def test_admin_scope_and_transition(app, seeded):
     queue = admin.get("/admin/orders")
     assert queue.status_code == 200 and all(ref in queue.data for ref in (b"VC-1001", b"VC-1002"))
     assert admin.get("/orders/1").status_code == admin.get("/orders").status_code == 403
-    assert admin.post("/admin/orders/1/ship", data={"csrf": token, "owner_id": 2}).status_code == 303
-    assert b"shipped" in customer.get("/orders/1").data
+    assert admin.post("/admin/orders/1/ship", data={"csrf": token, "owner_id": 2,
+                      "status": "cancelled", "reference": "Changed", "unit_cents": 1}).status_code == 303
+    detail = customer.get("/orders/1").get_data(as_text=True)
+    assert all(value in detail for value in ("shipped", "VC-1001", "€17.00"))
     assert admin.post("/admin/orders/1/ship", data={"csrf": token}).status_code == 409
     assert admin.post("/admin/orders/999/ship", data={"csrf": token}).status_code == 404
 
@@ -144,20 +148,106 @@ def test_session_rotation_and_revocation(app, seeded):
     assert client.post("/logout", data={"csrf": csrf(profile)}).status_code == 303
     replay.set_cookie(COOKIE, current)
     assert replay.get("/profile").status_code == 401
+    assert replay.post("/profile", data={"csrf": csrf(profile), "display_name": "Changed"}).status_code == 401
+    assert client.get_cookie(COOKIE) is None
+    assert csrf(client.get("/login")) != csrf(profile)
+    with app.app_context():
+        assert connection().execute("SELECT display_name FROM users WHERE id=1").fetchone()[0] == "Avery"
 
 
 @pytest.mark.parametrize("field", ["last_seen", "expires"])
 def test_expiration(app, seeded, field):
-    client, _ = sign_in(app, "avery", seeded)
+    client, old_csrf = sign_in(app, "avery", seeded)
     token = client.get_cookie(COOKIE).value
     with app.app_context(), connection() as db:
         assert db.execute("SELECT token_hash FROM sessions").fetchone()[0] == hashlib.sha256(token.encode()).hexdigest()
         sql = {"last_seen": "UPDATE sessions SET last_seen=0", "expires": "UPDATE sessions SET expires=0"}
         db.execute(sql[field])
     assert client.get("/orders").status_code == 401
+    assert client.post("/profile", data={"csrf": old_csrf, "display_name": "Changed"}).status_code == 401
+    fresh = csrf(client.get("/login"))
+    assert fresh != old_csrf
+    credentials = {"email": "avery@example.test", "password": seeded[1]["avery"]}
+    assert client.post("/login", data={**credentials, "csrf": old_csrf}).status_code == 400
+    assert client.post("/login", data={**credentials, "csrf": fresh}).status_code == 303
+    assert b"Avery" in client.get("/profile").data
 
 
 def test_https_cookie_configuration(app):
     app.config["SESSION_COOKIE_SECURE"] = True
     response = app.test_client().get("/login", base_url="https://localhost")
     assert "Secure;" in response.headers["Set-Cookie"]
+
+
+def test_live_role_demotion(app, seeded):
+    admin, token = sign_in(app, "ops", seeded)
+    assert admin.get("/admin/orders").status_code == 200
+    with app.app_context(), connection() as db:
+        db.execute("UPDATE users SET role='customer' WHERE email='ops@example.test'")
+    assert admin.get("/profile").status_code == 200
+    assert admin.get("/admin/orders").status_code == 403
+    assert admin.post("/admin/orders/1/ship", data={"csrf": token}).status_code == 403
+    orders = admin.get("/orders")
+    assert orders.status_code == 200 and b"No orders yet" in orders.data
+    with app.app_context():
+        assert connection().execute("SELECT status FROM orders WHERE id=1").fetchone()[0] == "processing"
+
+
+def test_unsupported_order_identifiers(app, seeded):
+    customer, _ = sign_in(app, "avery", seeded)
+    admin, token = sign_in(app, "ops", seeded)
+    for value in ("abc", "-1", "1.5", "0", str(2**63), "9" * 4500):
+        assert customer.get(f"/orders/{value}").status_code == 404
+        assert admin.post(f"/admin/orders/{value}/ship", data={"csrf": token}).status_code == 404
+    with app.app_context():
+        assert connection().execute("SELECT count(*) FROM orders WHERE status='shipped'").fetchone()[0] == 0
+
+
+def test_two_concurrent_ship_requests(app, seeded):
+    sessions = [sign_in(app, "ops", seeded) for _ in range(2)]
+    ready = Barrier(2, timeout=5)
+
+    def ship(session):
+        client, token = session
+        ready.wait()
+        return client.post("/admin/orders/1/ship", data={"csrf": token}).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(ship, sessions)) == [303, 409]
+    with app.app_context():
+        assert connection().execute("SELECT status FROM orders WHERE id=1").fetchone()[0] == "shipped"
+
+
+def test_anonymous_allocation_budget(app, monkeypatch):
+    monkeypatch.setattr("velora.throttle.monotonic", lambda: 100)
+    first = app.test_client()
+    token = csrf(first.get("/login"))
+    for _ in range(19):
+        assert app.test_client().get("/login").status_code == 200
+    denied = app.test_client().get("/login")
+    assert denied.status_code == 429 and denied.headers["Retry-After"] == "60"
+    assert "Set-Cookie" not in denied.headers
+    assert csrf(first.get("/login")) == token
+    assert app.test_client().head("/login").status_code == 200
+    with app.app_context():
+        assert connection().execute("SELECT count(*) FROM sessions").fetchone()[0] == 20
+    monkeypatch.setattr("velora.throttle.monotonic", lambda: 160)
+    assert app.test_client().get("/login").status_code == 200
+
+
+def test_login_attempt_budget(app, seeded, monkeypatch):
+    monkeypatch.setattr("velora.throttle.monotonic", lambda: 100)
+    client = app.test_client()
+    form = {"csrf": csrf(client.get("/login")), "email": "avery@example.test", "password": "incorrect"}
+    for _ in range(10):
+        assert client.post("/login", data=form).status_code == 401
+    other = app.test_client()
+    valid = {"email": "morgan@example.test", "password": seeded[1]["morgan"], "csrf": csrf(other.get("/login"))}
+    with monkeypatch.context() as patch:
+        def unexpected_hash(*args):
+            pytest.fail("Throttled request reached password verification")
+        patch.setattr("velora.access.check_password_hash", unexpected_hash)
+        denied = other.post("/login", data=valid)
+    assert denied.status_code == 429 and denied.headers["Retry-After"] == "60"
+    monkeypatch.setattr("velora.throttle.monotonic", lambda: 160)
+    assert other.post("/login", data=valid).status_code == 303

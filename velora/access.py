@@ -46,6 +46,11 @@ def check_access():
         supplied = request.form.get("csrf", "").encode()
         if not g.identity or not secrets.compare_digest(g.identity["csrf"].encode(), supplied):
             abort(400)
+    if request.endpoint == "account.login" and role == "guest":
+        if request.method == "POST":
+            current_app.extensions["login_attempts"].reserve()
+        elif request.method == "GET" and not g.identity:
+            current_app.extensions["anonymous_sessions"].reserve()
     if g.identity:
         with db:
             db.execute("UPDATE sessions SET last_seen=? WHERE token_hash=?", (now, digest(token)))
@@ -76,6 +81,8 @@ def start_session(user_id):
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "HEAD":
+        return "", 200
     if g.identity and g.identity["user_id"]:
         return redirect(url_for("account.profile"))
     if request.method == "GET":
