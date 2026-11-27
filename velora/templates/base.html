@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Product catalog{% endblock %} · Velora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='catalog.css') }}">
+</head>
+<body>
+  <header><a href="{{ url_for('catalog.index') }}">Velora Commerce</a></header>
+  <main>{% block content %}{% endblock %}</main>
+  <footer>Synthetic catalog · Local portfolio project</footer>
+</body>
+</html>

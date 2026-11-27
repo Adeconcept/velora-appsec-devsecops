@@ -1,0 +1,15 @@
+:root { color: #172e33; background: #faf9f5; font: 1rem/1.6 "Inter", system-ui, sans-serif; }
+body { max-width: 52rem; margin: auto; padding: 0 1.25rem; }
+header, footer { padding: 1.4rem 0; border-block-end: 1px solid #c6cfcc; }
+header a { font-weight: 750; text-decoration: none; }
+main { padding: 2.5rem 0 4rem; }
+h1 { font: 500 clamp(2.5rem, 7vw, 4.5rem)/1.1 Georgia, serif; margin: 1rem 0 2rem; }
+a { color: #126357; text-underline-offset: .2em; }
+form div, li { display: flex; gap: .75rem; }
+label { display: block; margin-bottom: .4rem; }
+input, button { font: inherit; padding: .5rem .8rem; border: 1px solid #61716d; border-radius: .3rem; }
+input { min-width: 0; flex: 1; }
+button { color: white; background: #17584e; cursor: pointer; }
+ul { padding: 0; margin: 2rem 0; }
+li { justify-content: space-between; padding: 1rem 0; border-top: 1px solid #c6cfcc; }
+footer { border-block: 1px solid #c6cfcc; font-size: .875rem; }

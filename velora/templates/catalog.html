@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Product catalog</h1>
+<form method="get">
+  <label for="q">Search by product name</label>
+  <div><input id="q" name="q" value="{{ query }}" maxlength="100" type="search">
+  <button>Search</button></div>
+</form>
+{% if error %}<p role="alert">{{ error }}</p>
+{% elif products %}
+<ul>
+{% for product in products %}
+  <li><a href="{{ url_for('catalog.detail', product_id=product.id) }}">{{ product.name }}</a>
+  <span>{{ product.price_cents|euros }}</span></li>
+{% endfor %}
+</ul>
+{% else %}<p>No products found.</p>{% endif %}
+{% if query or error %}<a href="{{ url_for('catalog.index') }}">Show all products</a>{% endif %}
+{% endblock %}
