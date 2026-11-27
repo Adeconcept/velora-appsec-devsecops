@@ -1,0 +1,46 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.14, pytest-8.4.2, pluggy-1.7.0 -- <assessment-checkout>/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: <assessment-checkout>
+collecting ... collected 38 items
+
+tests/test_accounts.py::test_storage_and_idempotent_seed PASSED          [  2%]
+tests/test_accounts.py::test_failed_login[avery@example.test] PASSED     [  5%]
+tests/test_accounts.py::test_failed_login[unknown@example.test] PASSED   [  7%]
+tests/test_accounts.py::test_logged_out_access[get-/profile] PASSED      [ 10%]
+tests/test_accounts.py::test_logged_out_access[post-/profile] PASSED     [ 13%]
+tests/test_accounts.py::test_logged_out_access[get-/orders] PASSED       [ 15%]
+tests/test_accounts.py::test_logged_out_access[get-/orders/1] PASSED     [ 18%]
+tests/test_accounts.py::test_logged_out_access[get-/admin/orders] PASSED [ 21%]
+tests/test_accounts.py::test_logged_out_access[post-/admin/orders/1/ship] PASSED [ 23%]
+tests/test_accounts.py::test_logged_out_access[post-/logout] PASSED      [ 26%]
+tests/test_accounts.py::test_customer_boundary[avery-1-2-\u20ac17.00] PASSED [ 28%]
+tests/test_accounts.py::test_customer_boundary[morgan-2-1-\u20ac24.00] PASSED [ 31%]
+tests/test_accounts.py::test_admin_scope_and_transition PASSED           [ 34%]
+tests/test_accounts.py::test_csrf_for_all_writes[False] PASSED           [ 36%]
+tests/test_accounts.py::test_csrf_for_all_writes[True] PASSED            [ 39%]
+tests/test_accounts.py::test_session_rotation_and_revocation PASSED      [ 42%]
+tests/test_accounts.py::test_expiration[last_seen] PASSED                [ 44%]
+tests/test_accounts.py::test_expiration[expires] PASSED                  [ 47%]
+tests/test_accounts.py::test_https_cookie_configuration PASSED           [ 50%]
+tests/test_accounts.py::test_live_role_demotion PASSED                   [ 52%]
+tests/test_accounts.py::test_unsupported_order_identifiers PASSED        [ 55%]
+tests/test_accounts.py::test_two_concurrent_ship_requests PASSED         [ 57%]
+tests/test_accounts.py::test_anonymous_allocation_budget PASSED          [ 60%]
+tests/test_accounts.py::test_login_attempt_budget PASSED                 [ 63%]
+tests/test_catalog.py::test_setup_preserves_edits PASSED                 [ 65%]
+tests/test_catalog.py::test_search[-3] PASSED                            [ 68%]
+tests/test_catalog.py::test_search[   -3] PASSED                         [ 71%]
+tests/test_catalog.py::test_search[  NOTEbook -1] PASSED                 [ 73%]
+tests/test_catalog.py::test_search[missing-0] PASSED                     [ 76%]
+tests/test_catalog.py::test_search[%-0] PASSED                           [ 78%]
+tests/test_catalog.py::test_search[_-0] PASSED                           [ 81%]
+tests/test_catalog.py::test_search['-0] PASSED                           [ 84%]
+tests/test_catalog.py::test_search[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-0] PASSED [ 86%]
+tests/test_catalog.py::test_search_limit PASSED                          [ 89%]
+tests/test_catalog.py::test_detail PASSED                                [ 92%]
+tests/test_catalog.py::test_html_contexts PASSED                         [ 94%]
+tests/test_catalog.py::test_price_constraint[-1] PASSED                  [ 97%]
+tests/test_catalog.py::test_price_constraint[1.5] PASSED                 [100%]
+
+============================== 38 passed in 2.77s ==============================
