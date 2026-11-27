@@ -15,6 +15,7 @@ def connection():
     if "database" not in g:
         g.database = sqlite3.connect(current_app.config["DATABASE"])
         g.database.row_factory = sqlite3.Row
+        g.database.execute("PRAGMA foreign_keys = ON")
     return g.database
 
 

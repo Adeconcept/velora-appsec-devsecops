@@ -1,4 +1,6 @@
-# Catalog architecture and security decisions
+# Milestone 1 catalog architecture
+
+This is the accepted catalog design record. For the current account and order implementation, see the [Milestone 2 authorization matrix](access-control.md).
 
 The storefront implements a local slice of AST-001 (customer application) and AST-002 (customer and order database). The earlier threat model links catalog threat TM-004 to requirement SR-001 and planned verification ST-001. Its web penetration test records results from separate PortSwigger labs. This repository supplies implementation evidence for its own catalog. [Threat model and secure SDLC](https://github.com/Adeconcept/Velora-GmbH/tree/project/Application-threat-model-and-secure-SDLC) · [Web penetration test](https://github.com/Adeconcept/Velora-GmbH/tree/project/Web-app-Penetration-testing)
 

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{% if admin %}Fulfillment{% else %}My orders{% endif %}{% endblock %}
+{% block content %}
+<h1>{{ self.title() }}</h1>
+<ul>{% for row in rows %}
+<li><section>
+{% if admin %}<strong>{{ row.reference }}</strong>{% else %}
+<a href="{{ url_for('account.order', order_id=row.id) }}">{{ row.reference }}</a>{% endif %}
+<p>{{ row.placed_on }} · {{ row.status }}</p>
+{% if admin and row.status == 'processing' %}
+<form method="post" action="{{ url_for('account.ship', order_id=row.id) }}">
+  {% include "csrf.html" %}<button>Mark shipped</button>
+</form>{% endif %}
+</section></li>{% else %}<li>No orders yet.</li>{% endfor %}</ul>
+{% endblock %}
